@@ -5,11 +5,49 @@ class Termometro():
     def __init__(self):
         self.custome = pygame.image.load("images/termo1.jpg")
         
+    def convertir(self, grados, toUnidad):
+        resultado = 0
+        if toUnidad == 'F':
+            resultado = grados * 9/5 +32
+        elif toUnidad == 'C':
+            resultado = (grados - 32) * 5/9
+        else:
+            resultado = grados
+        
+        return '{:10.2f}'.format(resultado)
+    
+ 
+class Selector():
+     __tipoUnidad = None
+     
+     def __init__(self, unidad='C'):
+         self.__customes = []
+         self.__customes.append(pygame.image.load('images/posiF.png'))
+         self.__customes.append(pygame.image.load('images/posiC.png'))
+                                
+         self.__tipoUnidad = unidad
+    
+     def custome(self):
+         if self.__tipoUnidad == 'F':
+             return self.__customes[0]
+         else:
+             return self.__customes[1]
+            
+     def change(self):
+             if self.__tipoUnidad == 'F':
+                 self.__tipoUnidad = 'C'
+             else:
+                 self.__tipoUnidad = 'F'
+                 
+     def unidad(self):
+         return self.__tipoUnidad
+ 
 class NumberInput():
     __value = 0
-    __strValue = '0' # se crea porque "__value = 0" no es un string
+    __strValue = '' # se crea porque "__value = 0" no es un string
     __position = [0, 0]
     __size = [0, 0]
+    __pointsCount = 0
     
     def __init__(self, value=0):
         self.__font = pygame.font.SysFont('Arial', 24)
@@ -24,15 +62,17 @@ class NumberInput():
         '''
         
     def on_event(self, event):
-        if event.type == KEYDOWN:
-            if event.unicode.isdigit() and len(self.__strValue) < 10:  # o if event.unicode in '0123456789':
+        if event.type == KEYDOWN:                                        #hacemos que solo se pueda introducir un '.' y en caso de borrarlo que se pueda volver a meter
+            if event.unicode.isdigit() and len(self.__strValue) < 10 or (event.unicode == '.' and self.__pointsCount == 0):  # o if event.unicode in '0123456789':
                 self.__strValue += event.unicode
                 self.value(self.__strValue)
-                print(self.__strValue, self.__value)
+                if event.unicode == '.':
+                    self.__pointsCount += 1
             elif event.key == K_BACKSPACE:
+                if self.__strValue[-1] == '.':
+                    self.__pointsCount -= 1
                 self.__strValue = self.__strValue[:-1]
                 self.value(self.__strValue)
-                print(self.__strValue, self.__value)
                 
                 
     def render(self):
@@ -57,8 +97,12 @@ class NumberInput():
         else:
             val = str(val)
             try:
-                self.__value = int(val)
+                self.__value = float(val)
                 self.__strValue = val
+                if '.' in self.__strValue:
+                    self.__pointsCount = 1
+                else:
+                    self.__pointsCount = 0
             except:
                 pass
             
@@ -124,12 +168,14 @@ class mainApp():
     def __init__(self):
         self.__screen = pygame.display.set_mode((290, 415))
         pygame.display.set_caption('Termómetro')
-        self.__screen.fill((244, 236, 203)) #color de fondo
+        
         
         self.termometro = Termometro()
         self.entrada = NumberInput()
         self.entrada.pos((106, 58))
         self.entrada.size((133, 28))
+        
+        self.selector = Selector()
         
         
     def __on_close(self):
@@ -142,7 +188,18 @@ class mainApp():
                 if event.type == QUIT:
                     self.__on_close()
                     
-                self.entrada.on_event(event)   
+                self.entrada.on_event(event)
+                
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    self.selector.change()
+                    grados = self.entrada.value()
+                    nuevaUnidad = self.selector.unidad()
+                    temperatura = self.termometro.convertir(grados, nuevaUnidad)
+                    print(temperatura)
+                    self.entrada.value(temperatura)
+                    
+            #pintamos el fondo de pantalla
+            self.__screen.fill((244, 236, 203))
              
             #pintamos el termometro en su posicion 
             self.__screen.blit(self.termometro.custome, (50, 34))
@@ -151,6 +208,9 @@ class mainApp():
             text = self.entrada.render()#obtenemos rectangulo blanco y foto de texto y lo asignamos a text
             pygame.draw.rect(self.__screen, (255, 255, 255), text[0])# creamos el rectangulo blanco con sus datos (posicion y tamaño) text[0]
             self.__screen.blit(text[1], self.entrada.pos())# pintamos la foto del texto (text[1])
+            
+            #pintamos el selector
+            self.__screen.blit(self.selector.custome(), (112, 153))
             
             pygame.display.flip()
 
